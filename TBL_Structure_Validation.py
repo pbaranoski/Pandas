@@ -71,11 +71,10 @@ def main():
     rowColor = "FFFF00"
 
     for row in sheet.iter_rows(min_row=1, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
-        #print(row[0].row)
 
         if row[0].row == 1:
             pass
-        elif (row[0].row + 1) % 2:
+        elif (row[0].row) % 2 == 0:
             if bFlipColor == False:
                 bFlipColor = True
                 rowColor = 'B0FFFF'
