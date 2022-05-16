@@ -16,16 +16,17 @@ from pymysql import ROWID
 #TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\Snowflake\TST_CLM_PTB_PROC_CNTL.csv"
 #TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\Teradata\TST_V1_CLM_PTB_PROC_CNTL.csv"
 
-TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\FMR\TestResults\JIRA Test results\TST_CLM_FMR_CARR.csv"
-TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\FMR\TestResults\JIRA Test results\TST_v1_CLM_FMR_CARR.csv"
+TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\INT_V1_CLM_PTB_MO_AGG.csv"
+TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CLM_PTB_MO_AGG.csv"
 
 #fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\Snowflake\Compare\TBL_COL_Diffs.csv"
 #fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\Snowflake\Compare\TBL_COL_Diffs.xlsx"
 #fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\CLM_CYQ_SGNTR_Diffs.csv"
 #fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\CLM_CYQ_SGNTR_Diffs.xlsx"
 
-fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\FMR\TestResults\JIRA Test results\TestCLM_FMR_CARR_Diffs.csv"
-fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\FMR\TestResults\JIRA Test results\TestCLM_FMR_CARR_Diffs.xlsx"
+fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CLM_PTB_MO_AGG_Diffs.csv"
+fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CLM_PTB_MO_AGG_Diffs.xlsx"
+
 
 def removeDFCols(df, lstCols2Remove):
     # sColTxt = Column to drop from Data Frame
@@ -45,6 +46,22 @@ def removeIDRNulls(df):
     lstCols = df.columns.values.tolist()
     for col in lstCols:
         df.loc[df[col] == "?", col] = '' 
+
+    return df
+
+
+def trimTrailingSpaces(df):
+    
+    # Remove Leading and Trailing spaces in Pandas cells    
+    df.replace({"^\s*|\s*$":""}, regex=True, inplace=True) 
+
+    """    
+    lstCols = df.columns.values.tolist()
+
+    for col in lstCols:
+        if col == "CLM_LINE_INVLD_HCPCS_CD":
+            print( "|"+ df['CLM_LINE_INVLD_HCPCS_CD'].iloc[0] + "|")
+    """
 
     return df
 
@@ -72,13 +89,17 @@ def main():
     #########################################################
     dfFile1 = pd.read_csv(TBL_COLS1_csv, dtype=str, na_filter=False) 
     dfFile1 = removeDFCols(dfFile1, ["IDR_INSRT_TS", "IDR_UPDT_TS"]) 
+    #dfFile1 = removeDFCols(dfFile1, ["CLM_CYQ_SGNTR_SK", "CLM_YEAR_SGNTR_SK"])  
+    dfFile1 = removeDFCols(dfFile1, ["CLM_YEAR_SGNTR_SK", "CLM_CYQ_SGNTR_SK", "CLM_MO_SGNTR_SK", "CLM_CD_SGNTR_SK"])     
     dfFile1 = removeIDRNulls(dfFile1)
-    ##dfFile1.sort_values(by=['TABLE_SCHEMA', 'TABLE_NAME', 'COLUMN_NAME'], inplace=True)
+    dfFile1 = trimTrailingSpaces(dfFile1)
 
     dfFile2 = pd.read_csv(TBL_COLS2_csv, dtype=str, na_filter=False) 
     dfFile2 = removeDFCols(dfFile2, ["IDR_INSRT_TS", "IDR_UPDT_TS"]) 
+    #dfFile2 = removeDFCols(dfFile2, ["CLM_CYQ_SGNTR_SK", "CLM_YEAR_SGNTR_SK"])     
+    dfFile2 = removeDFCols(dfFile2, ["CLM_YEAR_SGNTR_SK", "CLM_CYQ_SGNTR_SK", "CLM_MO_SGNTR_SK", "CLM_CD_SGNTR_SK"])     
     dfFile2 = removeIDRNulls(dfFile2)
-    ##dfFile2.sort_values(by=['TABLE_SCHEMA', 'TABLE_NAME', 'COLUMN_NAME'], inplace=True)
+    dfFile2 = trimTrailingSpaces(dfFile2)
 
     print("NOF dfFile1 rows:"+str(len(dfFile1.index)))
     print("NOF dfFile2 rows:"+str(len(dfFile2.index)))
@@ -129,12 +150,20 @@ def main():
     ###################################################
     for sheet in wrkbk:
 
+        sheet.freeze_panes = 'A2'
+
         thin = Side(border_style="thin")
         cellBorder = Border(top=thin, left=thin, right=thin, bottom=thin)
 
-        sheet.freeze_panes = 'A2'
+        # Set Alternating color pattern
+        iNOFRowsWithColor = 0       
+        if sheet.title == "Matches":
+            iNOFRowsWithColor = 1
+        else:
+            iNOFRowsWithColor = 2            
 
-        bFlipColor = False
+        # Color switch --> used in XOR operation
+        iFlipColor = 1
 
         #sheet = wrkbk.active
         # Default rowColor
@@ -146,12 +175,12 @@ def main():
             if row[0].row == 1:
                 pass
                 # skip header
-            elif (row[0].row) % 2 == 0:
-                if bFlipColor == False:
-                    bFlipColor = True
+            elif (row[0].row) % iNOFRowsWithColor == 0:
+                # XOR value --> to flip color switch back-n-forth
+                iFlipColor ^= 1
+                if iFlipColor == 0:
                     rowColor = 'DDEBF6'
                 else:
-                    bFlipColor = False
                     rowColor = 'E2EFDB'  
 
             # Color cells with Current RowColor
