@@ -1,11 +1,11 @@
-from sys import builtin_module_names
 import pandas as pd
 import openpyxl as excel
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
 from openpyxl.styles import Fill, Color
 import os
 
-from pymysql import ROWID
+#from pymysql import ROWID
+import time
 
 #TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\Snowflake\Compare\BIA_DEV_INFO.csv"
 #TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\Snowflake\Compare\BIA_TST_INFO.csv"
@@ -16,16 +16,16 @@ from pymysql import ROWID
 #TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\Snowflake\TST_CLM_PTB_PROC_CNTL.csv"
 #TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\Teradata\TST_V1_CLM_PTB_PROC_CNTL.csv"
 
-TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\Teradata_CD_SGNTR.csv"
-TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\Snowflake_CD_SGNTR.csv"
+TBL_COLS1_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CLM_PTB_MO_AGG.csv"
+TBL_COLS2_csv = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\INT_V1_CLM_PTB_MO_AGG.csv"
 
 #fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\Snowflake\Compare\TBL_COL_Diffs.csv"
 #fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\Snowflake\Compare\TBL_COL_Diffs.xlsx"
 #fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\CLM_CYQ_SGNTR_Diffs.csv"
 #fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\Historical\CLM_CYQ_SGNTR_Diffs.xlsx"
 
-fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CD_SGNTRS_Diffs.csv"
-fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CD_SGNTRS_Diffs.xlsx"
+fDtlDiffs = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CLM_PTB_MO_AGG_DiffsTest.csv"
+fDtlDiffsXLSX = r"C:\Users\user\OneDrive - Apprio, Inc\Documents\PBAR\PBAR_IMPL\IMPL_CLM_PTB_MO_AGG_DiffsTest.xlsx"
 
 
 def removeDFCols(df, lstCols2Remove):
@@ -123,6 +123,8 @@ def main():
     dfMatches = comparison_df[comparison_df['_merge'] == 'both']
     dfMatches = sortDF(dfMatches)
 
+    print("Comparisons are complete!"+str(time.time() ) )
+
     ##########################################
     # saving Results to xlsx file
     ##########################################
@@ -133,6 +135,7 @@ def main():
 
     XLSXWriter.save()
 
+    print("Excel file is written"+str(time.time() ) )
 
     ################################
     # Modify Excel spreadsheet
@@ -152,10 +155,17 @@ def main():
 
         sheet.freeze_panes = 'A2'
 
+        # Set Excel cell color values
+        cellColorFillHdr = PatternFill(start_color='01B0F1', end_color='01B0F1', fill_type = "solid") 
+        cellColorFill1 = PatternFill(start_color="DDEBF6", end_color="DDEBF6", fill_type = "solid")
+        cellColorFill2 = PatternFill(start_color="E2EFDB", end_color="E2EFDB", fill_type = "solid")
+
+        # Set Excel border value
         thin = Side(border_style="thin")
         cellBorder = Border(top=thin, left=thin, right=thin, bottom=thin)
 
-        # Set Alternating color pattern
+
+        # Set Alternating color pattern value
         iNOFRowsWithColor = 0       
         if sheet.title == "Matches":
             iNOFRowsWithColor = 1
@@ -165,37 +175,41 @@ def main():
         # Color switch --> used in XOR operation
         iFlipColor = 1
 
-        #sheet = wrkbk.active
-        # Default rowColor
-        rowColor = "FFFF00"
 
         for row in sheet.iter_rows(min_row=1, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
 
-            # Set Row Color
+            # Set indicator for 1st header Row
             if row[0].row == 1:
-                pass
-                # skip header
-            elif (row[0].row) % iNOFRowsWithColor == 0:
-                # XOR value --> to flip color switch back-n-forth
-                iFlipColor ^= 1
-                if iFlipColor == 0:
-                    rowColor = 'DDEBF6'
-                else:
-                    rowColor = 'E2EFDB'  
+                bHeaderRow = True
+            else:
+                bHeaderRow = False
 
-            # Color cells with Current RowColor
+            # Set Row Color
+            if bHeaderRow:
+                # skip header
+                pass
+            elif (row[0].row) % iNOFRowsWithColor == 0:
+                # Time to change colors
+                # XOR value --> to flip color switch back-n-forth; determine which color to use
+                iFlipColor ^= 1
+
+            # Set cell attributes
             for cell in row:
-                if cell.row == 1:
-                    # color header row
-                    cell.fill = PatternFill(start_color='01B0F1', end_color='01B0F1', fill_type = "solid")                
-                    cell.border = cellBorder
+                cell.border = cellBorder
+                
+                if bHeaderRow:
+                    cell.fill = cellColorFillHdr
                 else:
-                    cell.fill = PatternFill(start_color=rowColor, end_color=rowColor, fill_type = "solid")
-                    cell.border = cellBorder
+                    if iFlipColor == 0:
+                        cell.fill = cellColorFill1
+                    else:
+                        cell.fill = cellColorFill2    
 
     # Save workbook changes                                            
     wrkbk.save(fDtlDiffsXLSX)
-  
+
+    print("Formatting is done"+str(time.time() ) )
+
     exit(0)
 
 
